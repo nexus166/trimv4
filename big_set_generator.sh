@@ -62,10 +62,14 @@ cat ${ALL_LISTS} | ${GOPATH}/bin/trimv4 - > "$FINAL_LIST" && printf "Running tri
 # sanitize it
 sanitize_list "$FINAL_LIST"
 
-printf "\\nStatus: %s\\n" "$(wc -l $FINAL_LIST)"
+_count="$(wc -l $FINAL_LIST | awk '{print $1}')"
+printf "\\nStatus: %s IPs/CIDRs\\n" "$_count"
+
+MAXELEM="$(printf "1"; for _i in $(seq 1 $(printf "$_count" | wc -m)); do printf "0"; done)"
+[[ "$MAXELEM" -gt 1000000 ]] && (echo "List is too big.." && exit 128);
 
 # create ipset restore file
-printf "create blacklist-tmp -exist hash:net family inet\\ncreate blacklist -exist hash:net family inet\\n" > ./blacklist.restore
+printf "create blacklist-tmp -exist hash:net family inet maxelem %d\\ncreate blacklist -exist hash:net family inet maxelem %d\\n" "$MAXELEM" "$MAXELEM" > ./blacklist.restore
 for _line in $(< ${FINAL_LIST}); do
 	printf "add blacklist-tmp %s\\n" "${_line}" >> ./blacklist.restore;
 done
